@@ -1,0 +1,12 @@
+services:
+  android:
+    build: .
+    init: true                # reap the daemons Gradle and adb leave behind
+    stdin_open: true          # keep STDIN open
+    tty: true                 # allocate a terminal — Claude Code is a TUI
+    volumes:
+      - ../..:/workspace      # project root, live-mounted (compose.yml is at docker/android-development/)
+      - home:/home/dev        # Claude Code + its login and history, Gradle caches, adb keys, debug keystore
+
+volumes:
+  home:
