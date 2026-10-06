@@ -15,4 +15,14 @@ if [[ -n "$("${docker_cmd[@]}" ps --quiet --filter "name=^${project_id}$")" ]]; 
   exec "${docker_cmd[@]}" exec -it "$project_id" "${@:-claude}"
 fi
 
-exec "${compose_cmd[@]}" run --rm --name "$project_id" android "$@"
+# Git identity and settings from the host, read-only, as the container's
+# system-wide config. Mounted here rather than in compose.yml: sudo would
+# resolve a ~ in that file to root's home.
+host_home="$(getent passwd "${SUDO_UID:-$(id -u)}" | cut -d: -f6)"
+git_config="$host_home/.config/git/config"
+run_args=()
+if [[ -f "$git_config" ]]; then
+  run_args+=(--volume "$git_config:/etc/gitconfig:ro")
+fi
+
+exec "${compose_cmd[@]}" run --rm --name "$project_id" "${run_args[@]}" android "$@"

@@ -94,6 +94,7 @@ That name covers the container, the image, the network and the `home` volume, so
 |---|---|---|
 | `../..` (the project root containing `docker/`) | `/workspace` | Your code, live |
 | `home` (named volume) | `/home/dev` | Claude Code with its login + history, Gradle caches (`~/.gradle`), adb keys and debug keystore (`~/.android`) |
+| `~/.config/git/config` | `/etc/gitconfig` (read-only) | Your git name, email and settings; added by `start-docker.sh` when the file exists |
 
 ## Not included
 
@@ -101,6 +102,7 @@ That name covers the container, the image, the network and the `home` volume, so
 - **Android Studio.** No layout or Compose preview, profiler or visual debugger. Everything goes through Gradle, `adb` and Claude.
 - **USB debugging.** The container has no access to the host's USB devices. To use a cable anyway, mount `/dev/bus/usb` into the service in `compose.yml` and add `device_cgroup_rules: ["c 189:* rmw"]`; that exposes every USB device on the host, not just the phone.
 - **NDK and CMake.** Add them to the `sdkmanager` line in the `Dockerfile` if the project has native code.
+- **Git credentials.** Commits made in the container carry your name and email, but there are no SSH keys or tokens inside. Push from the host.
 
 ## Caveats
 
@@ -108,4 +110,5 @@ That name covers the container, the image, the network and the `home` volume, so
 - **SDK versions are baked in.** If Gradle downloads an SDK package at the start of every session, set the matching build argument and rebuild.
 - **The debug keystore lives in the `home` volume.** After `remove-docker.sh`, builds are signed with a new key and the phone refuses to update the app until the old install is removed.
 - **Don't build the same checkout on the host.** A `local.properties` with a host `sdk.dir` overrides the SDK in the container.
+- **Host git settings can misfire.** Commit signing, a custom editor or pager and credential helpers rely on programs and keys the container doesn't have. Override them inside with `git config --global`, for example `git config --global commit.gpgsign false`; that is stored in the `home` volume.
 - **UID is baked into the image.** Rebuild if your `id -u` changes.
