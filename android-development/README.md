@@ -12,7 +12,7 @@ docker/android-development/
 └── bin/
     ├── build-docker.sh     # build the image
     ├── start-docker.sh     # run Claude Code, or any other command, in the container
-    ├── remove-docker.sh    # tear down image + home volume
+    ├── remove-docker.sh    # remove the project's container, network, home volume and images
     └── _common.sh          # shared by the three scripts
 ```
 
