@@ -2,8 +2,15 @@
 ARG JDK_VERSION=21
 FROM eclipse-temurin:${JDK_VERSION}-jdk-noble
 
+# Git comes from the Ubuntu Git maintainers' archive (ppa:git-core/ppa),
+# because Ubuntu's own package is years behind. --error-on=any stops the
+# build when that archive can't be read, instead of quietly installing
+# Ubuntu's Git.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl git unzip \
+ && apt-get install -y --no-install-recommends curl software-properties-common unzip \
+ && add-apt-repository -y ppa:git-core/ppa \
+ && apt-get update --error-on=any \
+ && apt-get install -y --no-install-recommends git \
  && rm -rf /var/lib/apt/lists/*
 
 # Standalone Gradle, only for bootstrapping a new project (`gradle wrapper`).

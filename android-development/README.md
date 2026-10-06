@@ -49,6 +49,8 @@ Versions are build arguments. Change the defaults in the `Dockerfile`, or pass `
 
 `ANDROID_PLATFORM` is the suffix of the SDK package name, so Android 17 is `37.0`, not `37`; `sdkmanager --list` shows the valid names. `platform-tools` (`adb`) is always installed.
 
+Git comes from the Ubuntu Git maintainers' archive rather than from Ubuntu itself.
+
 ## Claude Code updates
 
 Claude Code is installed in the home directory, so the copy that runs lives in the `home` volume and updates itself there. An update that was downloaded during a session takes effect at the next start.
