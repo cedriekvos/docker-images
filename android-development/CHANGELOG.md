@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 3
+
+* `start-docker.sh` passes the terminal's color support into the container. Claude Code no longer falls back to 16 colors, which made its gray text unreadable on a light background.
+
 ## Version 2
 
 * Git now comes from the Ubuntu Git maintainers' archive, so the image has a current Git instead of Ubuntu's 2.43.
