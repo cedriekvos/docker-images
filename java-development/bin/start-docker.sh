@@ -11,8 +11,17 @@ set -euo pipefail
 
 source "$(dirname "$0")/_common.sh"
 
+# Color support of the terminal this runs in. Docker sets TERM=xterm and no
+# COLORTERM, which makes Claude Code draw with 16 colors: its gray text turns
+# white, unreadable on a light background. Passed here rather than in
+# compose.yml: sudo drops COLORTERM from the environment.
+term_args=(--env TERM=xterm-256color)
+if [[ -n "${COLORTERM:-}" ]]; then
+  term_args+=(--env "COLORTERM=$COLORTERM")
+fi
+
 if [[ -n "$("${docker_cmd[@]}" ps --quiet --filter "name=^${project_id}$")" ]]; then
-  exec "${docker_cmd[@]}" exec -it "$project_id" "${@:-claude}"
+  exec "${docker_cmd[@]}" exec -it "${term_args[@]}" "$project_id" "${@:-claude}"
 fi
 
 # Git identity and settings from the host, read-only, as the container's
@@ -26,4 +35,4 @@ if [[ -f "$git_config" ]]; then
 fi
 
 # --service-ports publishes the ports listed in compose.yml, if there are any.
-exec "${compose_cmd[@]}" run --rm --service-ports --name "$project_id" "${run_args[@]}" java "$@"
+exec "${compose_cmd[@]}" run --rm --service-ports --name "$project_id" "${term_args[@]}" "${run_args[@]}" java "$@"
