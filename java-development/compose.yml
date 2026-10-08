@@ -4,11 +4,35 @@ services:
     init: true                # reap the daemons Gradle leaves behind
     stdin_open: true          # keep STDIN open
     tty: true                 # allocate a terminal — Claude Code is a TUI
+    depends_on:
+      db:
+        condition: service_healthy   # start the database first, wait until it accepts connections
     ports:
       - "127.0.0.1:8080:8080" # web application, reachable from this machine only
     volumes:
       - ../..:/workspace      # project root, live-mounted (compose.yml is at docker/java-development/)
       - home:/home/dev        # Claude Code + its login and history, Maven and Gradle caches
 
+  # PostgreSQL for the application: host `db` from the java container,
+  # localhost:5432 from this machine, for a database GUI. It is published on
+  # this machine only, hence the throwaway credentials. It keeps running after
+  # a session ends; the next start reuses it.
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: dev
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:              # over TCP, so it only passes once start-up has finished
+      test: ["CMD", "pg_isready", "--host=127.0.0.1", "--username=dev"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - db:/var/lib/postgresql   # the data; survives sessions and rebuilds
+
 volumes:
   home:
+  db:
