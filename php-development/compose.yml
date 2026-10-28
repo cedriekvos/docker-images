@@ -1,0 +1,65 @@
+services:
+  php:
+    build: .
+    init: true                # reap the processes background commands leave behind
+    stdin_open: true          # keep STDIN open
+    tty: true                 # allocate a terminal — Claude Code is a TUI
+    depends_on:
+      db:
+        condition: service_healthy   # start the database first, wait until it accepts connections
+      nginx:
+        condition: service_started   # and the web server, with PHP-FPM behind it
+    volumes:
+      - ../..:/workspace      # project root, live-mounted (compose.yml is at docker/php-development/)
+      - home:/home/dev        # Claude Code + its login and history, Composer cache
+      - ./php.ini:/etc/php/project.ini:ro   # PHP settings, shared with fpm
+
+  # nginx serves the application on localhost:8000, published on this machine
+  # only. It hands PHP to the fpm service; nginx.conf is the site. Like the
+  # database, it keeps running after a session ends.
+  nginx:
+    image: nginx:1.30
+    depends_on:
+      fpm:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8000:80"
+    volumes:
+      - ../..:/workspace:ro   # the same paths as in fpm, which runs the files nginx names
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # PHP-FPM runs the application's PHP for nginx. It is built from the same
+  # Dockerfile as the php service, so it has the same PHP and extensions, and
+  # it runs as dev: files the application writes belong to the host user.
+  fpm:
+    build: .
+    # PCOV is for test runs; for web requests it only costs time.
+    command: ["php-fpm", "--fpm-config", "/etc/php-fpm.conf", "-d", "pcov.enabled=0"]
+    volumes:
+      - ../..:/workspace
+      - ./php-fpm.conf:/etc/php-fpm.conf:ro
+      - ./php.ini:/etc/php/project.ini:ro   # PHP settings, shared with php
+
+  # PostgreSQL for the application: host `db` from the php and fpm containers,
+  # localhost:5432 from this machine, for a database GUI. It is published on
+  # this machine only, hence the throwaway credentials. It keeps running after
+  # a session ends; the next start reuses it.
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: dev
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:              # over TCP, so it only passes once start-up has finished
+      test: ["CMD", "pg_isready", "--host=127.0.0.1", "--username=dev"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - db:/var/lib/postgresql   # the data; survives sessions and rebuilds
+
+volumes:
+  home:
+  db:
