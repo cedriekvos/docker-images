@@ -4,7 +4,8 @@ set -euo pipefail
 # Remove everything Docker holds for this project's android-development
 # container: the container itself, the network, the home volume and the
 # image, including images left behind by earlier builds. Login + history,
-# Gradle caches, adb keys and debug keystore are erased with the volume.
+# Gradle caches and adb keys are erased with the volume, and so is the debug
+# keystore of a project that doesn't keep its own in keystore/ (see README).
 #
 # Run from anywhere:
 #   docker/android-development/bin/remove-docker.sh

@@ -29,7 +29,7 @@ docker/android-development/bin/start-docker.sh
 docker/android-development/bin/start-docker.sh bash
 docker/android-development/bin/start-docker.sh ./gradlew assembleDebug
 
-# Tear everything down (deletes login, history, Gradle caches and the debug keystore!)
+# Tear everything down (deletes login, history, Gradle caches, the phone pairing and any debug keystore in ~/.android!)
 docker/android-development/bin/remove-docker.sh
 ```
 
@@ -76,9 +76,51 @@ adb connect <phone-ip>:<port>
 
 The pairing is kept in the `home` volume. The connection is not: the port changes whenever wireless debugging restarts, and automatic discovery does not cross the Docker network, so the address has to be typed in.
 
+## Debug signing key
+
+The phone only updates an app when the new build is signed with the same key as the installed one. Keep that key in the project, at `keystore/debug.keystore`, out of Git with a `keystore/` or `*.keystore` line in `.gitignore`. Point the debug signing configuration at it in `app/build.gradle.kts`:
+
+```kotlin
+android {
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("keystore/debug.keystore")
+        }
+    }
+}
+```
+
+Alias and passwords stay Android's standard debug values (alias `androiddebugkey`, store and key password `android`), so nothing else is needed.
+
+There are two ways to get the key, both run in the container from the project root. Copy the one the first build created. An app that is already on the phone keeps updating only with this key, so copy it before the next `remove-docker.sh`:
+
+```sh
+mkdir -p keystore
+cp ~/.android/debug.keystore keystore/
+```
+
+Or generate a new one with `keytool`. An app already on the phone was signed with a different key, so it has to be removed and installed again once, which deletes its data. `keytool` refuses to overwrite an existing file:
+
+```sh
+mkdir -p keystore
+keytool -genkeypair -keystore keystore/debug.keystore -storepass android \
+  -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 \
+  -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+```
+
+If the file is missing, for example in a fresh clone, the build stops instead of signing with a different key:
+
+```
+Keystore file '/workspace/keystore/debug.keystore' not found for signing config 'debug'.
+```
+
+`git clean -x` deletes ignored files, this key included, so keep a copy outside the project as well.
+
+With the key in the project, `remove-docker.sh` no longer changes the signing key. It still deletes the phone pairing (the adb keys in `~/.android`), so pair again afterwards.
+
 ## Starting a new project
 
-There is no Android Studio and no project wizard here: ask Claude to scaffold the project, or write the Gradle files by hand. `gradle wrapper --gradle-version <version>` generates `./gradlew`; use that for everything afterwards. Keep `compileSdk` in line with `ANDROID_PLATFORM`.
+There is no Android Studio and no project wizard here: ask Claude to scaffold the project, or write the Gradle files by hand. `gradle wrapper --gradle-version <version>` generates `./gradlew`; use that for everything afterwards. Keep `compileSdk` in line with `ANDROID_PLATFORM`. Give the project its own debug signing key before the app first goes on a phone, as described in [Debug signing key](#debug-signing-key).
 
 ## How it isolates per project
 
@@ -88,14 +130,14 @@ The scripts derive a unique compose project name from the dir above `docker/`:
 /home/you/notes-app/docker/android-development/  →  notes-app-android-development
 ```
 
-That name covers the container, the image, the network and the `home` volume, so two projects don't share login state, caches or signing keys. If two projects share a basename, set `ANDROID_DEV_PROJECT_ID` before running the scripts.
+That name covers the container, the image, the network and the `home` volume, so two projects don't share login state, caches or phone pairings. If two projects share a basename, set `ANDROID_DEV_PROJECT_ID` before running the scripts.
 
 ## What gets mounted
 
 | Host | Container | Why |
 |---|---|---|
 | `../..` (the project root containing `docker/`) | `/workspace` | Your code, live |
-| `home` (named volume) | `/home/dev` | Claude Code with its login + history, Gradle caches (`~/.gradle`), adb keys and debug keystore (`~/.android`) |
+| `home` (named volume) | `/home/dev` | Claude Code with its login + history, Gradle caches (`~/.gradle`), adb keys (`~/.android`), and the debug keystore of a project that has no key of its own |
 | `~/.config/git/config` | `/etc/gitconfig` (read-only) | Your git name, email and settings; added by `start-docker.sh` when the file exists |
 
 ## Not included
@@ -110,7 +152,7 @@ That name covers the container, the image, the network and the `home` volume, so
 
 - **One container per project.** A second `start-docker.sh` joins the running container; its sessions end when the first command exits.
 - **SDK versions are baked in.** If Gradle downloads an SDK package at the start of every session, set the matching build argument and rebuild.
-- **The debug keystore lives in the `home` volume.** After `remove-docker.sh`, builds are signed with a new key and the phone refuses to update the app until the old install is removed.
+- **Keep the debug signing key in the project.** See [Debug signing key](#debug-signing-key). A project that doesn't is signed with `~/.android/debug.keystore` from the `home` volume: after `remove-docker.sh` its builds get a new key, and the phone refuses to update the app until the old install is removed, which deletes the app's data.
 - **Don't build the same checkout on the host.** A `local.properties` with a host `sdk.dir` overrides the SDK in the container.
 - **Host git settings can misfire.** Commit signing, a custom editor or pager and credential helpers rely on programs and keys the container doesn't have. Override them inside with `git config --global`, for example `git config --global commit.gpgsign false`; that is stored in the `home` volume.
 - **UID is baked into the image.** Rebuild if your `id -u` changes.

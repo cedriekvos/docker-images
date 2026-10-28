@@ -6,7 +6,7 @@ services:
     tty: true                 # allocate a terminal — Claude Code is a TUI
     volumes:
       - ../..:/workspace      # project root, live-mounted (compose.yml is at docker/android-development/)
-      - home:/home/dev        # Claude Code + its login and history, Gradle caches, adb keys, debug keystore
+      - home:/home/dev        # Claude Code + its login and history, Gradle caches, adb keys, and the debug keystore unless the project has its own
 
 volumes:
   home:
