@@ -1,0 +1,14 @@
+services:
+  claude:
+    build: .
+    stdin_open: true          # keep STDIN open
+    tty: true                 # allocate a terminal — Claude Code is a TUI
+    working_dir: /workspace
+    environment:
+      - HOME=/claude-home
+    volumes:
+      - ../..:/workspace      # repo root, live-mounted (compose.yml is at docker/claude/)
+      - claude-home:/claude-home   # persists login + settings between runs
+
+volumes:
+  claude-home:
