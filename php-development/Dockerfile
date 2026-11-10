@@ -45,12 +45,12 @@ RUN for sapi in cli fpm; do \
 # PHP-FPM under a name that doesn't change with PHP_VERSION, for compose.yml.
 RUN ln -s "/usr/sbin/php-fpm${PHP_VERSION}" /usr/local/sbin/php-fpm
 
-# Composer. It belongs to root, so `composer self-update` can't replace it;
-# a rebuild with another COMPOSER_VERSION does.
-ARG COMPOSER_VERSION=2.10.3
-RUN curl -fsSL -o /usr/local/bin/composer \
-        "https://getcomposer.org/download/${COMPOSER_VERSION}/composer.phar" \
- && chmod 755 /usr/local/bin/composer
+# Composer: latest-2.x is the newest 2.x release; an exact version such as
+# 2.10.3 pins it. ADD checks the download on every build, so a plain rebuild
+# takes a newer release, where a RUN with curl would stay cached. It belongs to
+# root, so `composer self-update` can't replace it.
+ARG COMPOSER_VERSION=latest-2.x
+ADD --chmod=755 https://getcomposer.org/download/${COMPOSER_VERSION}/composer.phar /usr/local/bin/composer
 
 # Non-root user matching host UID/GID (override at build time if yours differ).
 # The Ubuntu base image ships an "ubuntu" user that already occupies 1000:1000.

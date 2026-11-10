@@ -15,15 +15,16 @@ services:
       - ./php.ini:/etc/php/project.ini:ro   # PHP settings, shared with fpm
 
   # nginx serves the application on localhost:8000, published on this machine
-  # only. It hands PHP to the fpm service; nginx.conf is the site. Like the
-  # database, it keeps running after a session ends.
+  # only; PHP_DEV_HTTP_PORT in .env next to this file picks another port. It
+  # hands PHP to the fpm service; nginx.conf is the site. Like the database, it
+  # keeps running after a session ends.
   nginx:
     image: nginx:1.30
     depends_on:
       fpm:
         condition: service_started
     ports:
-      - "127.0.0.1:8000:80"
+      - "127.0.0.1:${PHP_DEV_HTTP_PORT:-8000}:80"
     volumes:
       - ../..:/workspace:ro   # the same paths as in fpm, which runs the files nginx names
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
@@ -41,9 +42,10 @@ services:
       - ./php.ini:/etc/php/project.ini:ro   # PHP settings, shared with php
 
   # PostgreSQL for the application: host `db` from the php and fpm containers,
-  # localhost:5432 from this machine, for a database GUI. It is published on
-  # this machine only, hence the throwaway credentials. It keeps running after
-  # a session ends; the next start reuses it.
+  # localhost:5432 from this machine, for a database GUI; PHP_DEV_DB_PORT in
+  # .env picks another port on this machine. It is published on this machine
+  # only, hence the throwaway credentials. It keeps running after a session
+  # ends; the next start reuses it.
   db:
     image: postgres:18
     environment:
@@ -51,7 +53,7 @@ services:
       POSTGRES_PASSWORD: dev
       POSTGRES_DB: dev
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${PHP_DEV_DB_PORT:-5432}:5432"
     healthcheck:              # over TCP, so it only passes once start-up has finished
       test: ["CMD", "pg_isready", "--host=127.0.0.1", "--username=dev"]
       interval: 2s
