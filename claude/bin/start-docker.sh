@@ -3,10 +3,10 @@ set -euo pipefail
 
 # Run a one-shot, interactive Claude Code session in a container.
 # The container is removed on exit (--rm). State persists via the
-# claude-home volume (namespaced by CLAUDE_PROJECT_ID).
+# home volume (namespaced by CLAUDE_PROJECT_ID). Arguments go to Claude Code.
 #
 # Run from anywhere:
-#   docker/claude/bin/start-docker.sh
+#   docker/claude/bin/start-docker.sh [claude arguments...]
 
 source "$(dirname "$0")/_common.sh"
 
@@ -19,4 +19,14 @@ if [[ -n "${COLORTERM:-}" ]]; then
   term_args+=(--env "COLORTERM=$COLORTERM")
 fi
 
-exec "${compose_cmd[@]}" run --rm "${term_args[@]}" claude
+# Git identity and settings from the host, read-only, as the container's
+# system-wide config. Mounted here rather than in compose.yml: sudo would
+# resolve a ~ in that file to root's home.
+host_home="$(getent passwd "${SUDO_UID:-$(id -u)}" | cut -d: -f6)"
+git_config="$host_home/.config/git/config"
+run_args=()
+if [[ -f "$git_config" ]]; then
+  run_args+=(--volume "$git_config:/etc/gitconfig:ro")
+fi
+
+exec "${compose_cmd[@]}" run --rm "${term_args[@]}" "${run_args[@]}" claude "$@"
