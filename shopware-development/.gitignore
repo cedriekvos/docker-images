@@ -1,0 +1,4 @@
+# This machine's settings for the project, copied from .env.example. Which
+# ports are free and which folder names are taken depend on the machine, so
+# .env stays out of git.
+/.env
