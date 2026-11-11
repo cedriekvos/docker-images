@@ -7,7 +7,7 @@ services:
     working_dir: /workspace
     volumes:
       - ../..:/workspace      # repo root, live-mounted (compose.yml is at docker/claude/)
-      - home:/home/claude     # Claude Code + its login and history; it updates itself here
+      - home:/home/claude     # Claude Code and uv, which update themselves here, its login and history, and what pip and npm install
 
 volumes:
   home:

@@ -29,4 +29,13 @@ if [[ -f "$git_config" ]]; then
   run_args+=(--volume "$git_config:/etc/gitconfig:ro")
 fi
 
+# This machine's time zone, so that dates and times in the container are the
+# ones you see here: TZ when it is set, else the zone /etc/localtime points
+# to. Without it the container runs in UTC. Passed here rather than in
+# compose.yml: sudo drops TZ from the environment.
+host_tz="${TZ:-$(readlink /etc/localtime 2> /dev/null | sed -n 's|^.*/zoneinfo/||p' || true)}"
+if [[ -n "$host_tz" ]]; then
+  run_args+=(--env "TZ=$host_tz")
+fi
+
 exec "${compose_cmd[@]}" run --rm "${term_args[@]}" "${run_args[@]}" claude "$@"
