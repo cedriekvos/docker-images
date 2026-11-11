@@ -65,11 +65,13 @@ PHP comes from Ondřej Surý's archive (`ppa:ondrej/php`), because Ubuntu itself
 `composer create-project` wants an empty directory, and the project root already holds `docker/`. Create the shop in a subdirectory and move it up:
 
 ```sh
-composer create-project shopware/production tmp
+SYMFONY_DOCKER=0 composer create-project shopware/production tmp
 cp -a tmp/. . && rm -rf tmp var/cache
 ```
 
-`var/cache` goes because it holds the paths of `tmp/`; Shopware fills it again on the next request. `cp` overwrites files of the same name in the project root, such as a `README.md` or `.gitignore`. If Symfony Flex asks whether to include Docker configuration from recipes, answer no: this folder is the Docker setup.
+`var/cache` goes because it holds the paths of `tmp/`; Shopware fills it again on the next request. `cp` overwrites files of the same name in the project root, such as a `README.md` or `.gitignore`.
+
+`SYMFONY_DOCKER=0` keeps Symfony Flex from adding Docker files of its own, such as a `compose.yaml` in the project root: this folder is the Docker setup. Flex asks about them in a terminal only; without one, as when Claude runs Composer, it adds them without asking. The variable answers "no" for good: Flex stores `"docker": false` in `composer.json`, so packages added later don't bring Docker files either.
 
 Then tell Shopware where it runs, in `.env.local` in the project root:
 
