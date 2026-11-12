@@ -38,7 +38,8 @@ Run the scripts as yourself. They call `sudo docker` on their own when your user
 ## What is in the image
 
 - **Python 3.12**, Ubuntu's own, with pip and venv. `pip install` works without a virtual environment: pip can't write to the system's Python as Claude's user, so it installs into `~/.local`.
-- **uv**, for a script that brings its own packages (`uv run --with pandas script.py`), for Python MCP servers (`uvx`), and for another Python version when a project asks for one.
+- **pandas and matplotlib**, for working with data and drawing charts. They are installed in the system's Python, so they are part of the image and not of the `home` volume: a new volume, such as after `remove-docker.sh`, has them too. A virtual environment, such as the one uv makes for a project, has its own packages and doesn't see them. If pip has also installed one of them into `~/.local`, Python loads that copy first.
+- **uv**, for a script that brings its own packages (`uv run --with requests script.py`), for Python MCP servers (`uvx`), and for another Python version when a project asks for one.
 - **Node.js** with npm, for MCP servers that start with `npx` and for JavaScript tools. `npm install -g` installs into `~/.local`, so it needs no root.
 - **Git**, from the Ubuntu Git maintainers' archive, because Ubuntu's own is years behind.
 - **Command-line tools**: the GNU versions of grep, sed, find and the rest, ripgrep, jq, zip and unzip, file, ps and curl.
@@ -59,7 +60,7 @@ Docker fills the volume from the image only once, when the volume is new. Rebuil
 
 ## Python, Node.js and Git updates
 
-Python, Node.js, Git and the other tools are part of the image, so they change with a rebuild only. Docker reuses its earlier result of the `apt-get` step for as long as that step in the `Dockerfile` stays the same, so a plain rebuild keeps the versions you have. Rebuild without the cache to get their newest releases, together with a newer Ubuntu base and its security updates:
+Python with pandas and matplotlib, Node.js, Git and the other tools are part of the image, so they change with a rebuild only. Docker reuses its earlier result of the `apt-get` and `pip install` steps for as long as those steps in the `Dockerfile` stay the same, so a plain rebuild keeps the versions you have. Rebuild without the cache to get their newest releases, together with a newer Ubuntu base and its security updates:
 
 ```sh
 docker/claude/bin/build-docker.sh --pull --no-cache
@@ -111,6 +112,6 @@ If two projects share a basename (e.g. `~/work/api` and `~/personal/api`), set `
 - **Login is per-project** by design. First `start-docker.sh` in a new project will prompt for auth.
 - **UID is baked into the image.** Rebuild if your `id -u` changes.
 - **One-shot only.** `start-docker.sh` does `docker compose run --rm`, so each invocation is a fresh container. The volume keeps state between runs; the container itself doesn't.
-- **No root inside.** Claude can install Python and npm packages, but no system packages: `apt-get install` needs root. Add a program Claude needs to the `apt-get install` line in the `Dockerfile` and rebuild.
+- **No root inside.** Claude can install Python and npm packages, but no system packages: `apt-get install` needs root. Add a program Claude needs to the `apt-get install` line in the `Dockerfile` and rebuild. A Python package that every session should have, even after `remove-docker.sh`, goes on the `pip install` line next to pandas and matplotlib.
 - **No git credentials.** Commits made in the container carry your name and email, but there are no SSH keys or tokens inside. Push from the host.
 - **Host git settings can misfire.** Commit signing, a custom editor or pager and credential helpers rely on programs and keys the container doesn't have. Override them inside with `git config --global`, for example `git config --global commit.gpgsign false`; that is stored in the `home` volume.

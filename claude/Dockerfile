@@ -32,6 +32,15 @@ RUN apt-get update \
 # UTF-8 for every program, instead of the plain C locale's ASCII.
 ENV LANG=C.UTF-8
 
+# pandas and matplotlib, for working with data and drawing charts. pip installs
+# them as root into the system's Python (/usr/local), so they are part of the
+# image instead of the home volume: a new volume, such as after
+# remove-docker.sh, has them too. A copy that pip installs later as Claude's
+# user goes into ~/.local, and Python loads that one first.
+RUN python3 -m pip install --no-cache-dir --break-system-packages --root-user-action=ignore \
+        pandas matplotlib \
+ && python3 -c "import pandas, matplotlib"
+
 # Non-root user matching host UID/GID (override at build time if yours differ).
 # The Ubuntu base image ships an "ubuntu" user that already occupies 1000:1000.
 ARG UID=1000
