@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 5
+
+* pandas and matplotlib are part of the image, for working with data and drawing charts. They are installed in the system's Python instead of the `home` volume, so a new volume, such as after `remove-docker.sh`, has them too. A copy that pip installed into `~/.local` earlier still comes first.
+
 ## Version 4
 
 * Ubuntu instead of Alpine, with Python 3.12 (pip and venv), uv and Node.js 26 with npm, so Claude can run scripts, install the packages they need and start MCP servers. `pip install` and `npm install -g` work without root, and what they install stays in the `home` volume. The GNU versions of grep, sed and find come with it, and jq, zip, unzip, file and ps.
